@@ -145,6 +145,8 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
 ### Requête
 
 - Header `Authorization` obligatoire
+- Paramètre facultatif `period` : `P1`, `P2` ou `OTHER`. Une valeur absente signifie
+  toutes les périodes.
 
 ### Réponses
 
@@ -165,6 +167,10 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
 
 `period` vaut `P1`, `P2` ou `OTHER`. `status` vaut `SUBMITTED` (soumise), `PENDING`
 (en attente), `PUBLISHED` (publiée), `ASSIGNED` (attribuée) ou `ARCHIVED` (archivée).
+Le filtre `period` est combiné avec la visibilité du profil : un étudiant ne reçoit que
+les offres `PUBLISHED` de la période choisie et un déposant uniquement ses propres offres
+de cette période.
 
+- `400` `INVALID_QUERY` : `period` est invalide ou apparaît plusieurs fois.
 - `401` `UNAUTHENTICATED` : session absente ou invalide.
 - `403` `FORBIDDEN` : contact seulement promoteur ou signataire.
