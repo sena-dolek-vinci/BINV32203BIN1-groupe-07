@@ -174,3 +174,46 @@ de cette période.
 - `400` `INVALID_QUERY` : `period` est invalide ou apparaît plusieurs fois.
 - `401` `UNAUTHENTICATED` : session absente ou invalide.
 - `403` `FORBIDDEN` : contact seulement promoteur ou signataire.
+
+## POST /applications
+
+Permet à un étudiant connecté de candidater à une offre publiée.
+
+### Requête
+
+- Header `Authorization` obligatoire
+- Body JSON :
+
+```json
+{
+  "offerId": 7,
+  "message": "Je suis particulièrement intéressé par ce sujet."
+}
+```
+
+`message` est facultatif. Une chaîne vide est considérée comme l'absence de message.
+
+### Réponses
+
+- `201` : candidature créée
+
+```json
+{
+  "id": 7,
+  "offerId": 7,
+  "message": "Je suis particulièrement intéressé par ce sujet.",
+  "status": "IN_PROGRESS",
+  "appliedAt": "2026-11-03 15:00:00"
+}
+```
+
+- `400` `INVALID_BODY` : corps invalide, `offerId` absent ou message d'un type incorrect
+- `401` `UNAUTHENTICATED` : session absente ou invalide
+- `403` `FORBIDDEN` : l'utilisateur connecté n'est pas un étudiant
+- `404` `NOT_FOUND` : offre inexistante
+- `409` `OFFER_NOT_PUBLISHED` : l'offre n'est pas publiée
+- `409` `APPLICATION_ALREADY_EXISTS` : une candidature `IN_PROGRESS`, `SELECTED` ou
+  `REJECTED` existe déjà pour cet étudiant et cette offre
+
+Une candidature `WITHDRAWN` ne bloque pas une nouvelle candidature. Les candidatures
+retirées restent conservées en base.

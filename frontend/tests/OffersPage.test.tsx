@@ -90,4 +90,48 @@ describe("OffersPage", () => {
 
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
   });
+
+  it("permet à un étudiant de candidater avec un message facultatif", async () => {
+    stubFetch({
+      "/api/offers": () => Response.json(offers),
+      "/api/applications": () =>
+        Response.json({
+          id: 20,
+          offerId: 2,
+          message: "Mon message",
+          status: "IN_PROGRESS",
+          appliedAt: "2026-11-03 15:00:00",
+        }),
+    });
+
+    render(<OffersPage user={studentUser} token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("Refonte du portail client");
+    fireEvent.click(screen.getAllByRole("button", { name: "Candidater" })[0]!);
+    fireEvent.change(screen.getByRole("textbox", { name: "Message de candidature" }), {
+      target: { value: "Mon message" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer ma candidature" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("bien été envoyée");
+    });
+  });
+
+  it("affiche l'erreur de doublon renvoyée par le backend", async () => {
+    stubFetch({
+      "/api/offers": () => Response.json(offers),
+      "/api/applications": () =>
+        Response.json(
+          { error: { code: "APPLICATION_ALREADY_EXISTS", message: "Vous avez déjà candidaté" } },
+          { status: 409 },
+        ),
+    });
+
+    render(<OffersPage user={studentUser} token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("Refonte du portail client");
+    fireEvent.click(screen.getAllByRole("button", { name: "Candidater" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer ma candidature" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("déjà candidaté"));
+  });
 });

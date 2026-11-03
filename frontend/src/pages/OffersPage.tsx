@@ -6,6 +6,8 @@ import OfferTable from "../components/OfferTable.tsx";
 import { useOffers } from "../hooks/useOffers.ts";
 import type { PeriodCode } from "../models/offer.ts";
 import type { User } from "../models/user.ts";
+import { createApplication } from "../services/applications.service.ts";
+import { isUnauthorized } from "../utils/api.ts";
 
 interface OffersPageProps {
   user: User;
@@ -28,11 +30,33 @@ const PERIOD_OPTIONS: { value: PeriodCode | ""; label: string }[] = [
 
 const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
   const [period, setPeriod] = useState<PeriodCode | "">("");
+  const [applicationOfferId, setApplicationOfferId] = useState<number | null>(null);
+  const [applicationMessage, setApplicationMessage] = useState("");
+  const [applicationFeedback, setApplicationFeedback] = useState<string | null>(null);
+  const [applicationError, setApplicationError] = useState<string | null>(null);
   const { offers, isLoading, error } = useOffers(
     token,
     onUnauthorized,
     period === "" ? undefined : period,
   );
+
+  const submitApplication = async () => {
+    if (applicationOfferId === null) return;
+    setApplicationFeedback(null);
+    setApplicationError(null);
+    try {
+      await createApplication(token, applicationOfferId, applicationMessage);
+      setApplicationFeedback("Votre candidature a bien été envoyée.");
+      setApplicationMessage("");
+      setApplicationOfferId(null);
+    } catch (reason: unknown) {
+      if (isUnauthorized(reason)) {
+        onUnauthorized();
+      } else {
+        setApplicationError(reason instanceof Error ? reason.message : "Candidature impossible");
+      }
+    }
+  };
 
   const renderContent = () => {
     if (error) return <ErrorState message={error} />;
@@ -43,7 +67,15 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
         <p className="result-count">
           {offers.length} offre{offers.length > 1 ? "s" : ""}
         </p>
-        <OfferTable offers={offers} />
+        <OfferTable
+          offers={offers}
+          canApply={user.kind === "STUDENT"}
+          onApply={(offerId) => {
+            setApplicationOfferId(offerId);
+            setApplicationFeedback(null);
+            setApplicationError(null);
+          }}
+        />
       </>
     );
   };
@@ -52,6 +84,8 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
     <section>
       <h1>Offres de stage</h1>
       <p>{DESCRIPTIONS[user.kind]}</p>
+      {applicationFeedback && <p role="status">{applicationFeedback}</p>}
+      {applicationError && <p role="alert">{applicationError}</p>}
       <label>
         Période
         <select
@@ -67,6 +101,27 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
         </select>
       </label>
       {renderContent()}
+      {applicationOfferId !== null && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitApplication();
+          }}
+        >
+          <label>
+            Message (facultatif)
+            <textarea
+              aria-label="Message de candidature"
+              value={applicationMessage}
+              onChange={(event) => setApplicationMessage(event.target.value)}
+            />
+          </label>
+          <button type="submit">Envoyer ma candidature</button>
+          <button type="button" onClick={() => setApplicationOfferId(null)}>
+            Annuler
+          </button>
+        </form>
+      )}
     </section>
   );
 };
