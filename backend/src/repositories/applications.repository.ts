@@ -13,6 +13,15 @@ interface ExistingApplicationParams {
   studentId: number;
 }
 
+interface ApplicationIdParams {
+  applicationId: number;
+}
+
+interface WithdrawApplicationParams {
+  applicationId: number;
+  studentId: number;
+}
+
 interface OfferStatusRow {
   status: OfferStatus;
 }
@@ -46,6 +55,19 @@ export const createApplicationsRepository = (db: Db) => {
     WHERE a.student_id = @studentId
     ORDER BY ay.start_date DESC, a.applied_at DESC, a.id DESC
   `);
+  const findById = db.prepare<ApplicationIdParams, ApplicationDbo>(`
+    SELECT id, offer_id, student_id, message, status, applied_at
+    FROM applications
+    WHERE id = @applicationId
+  `);
+  const withdraw = db.prepare<WithdrawApplicationParams, ApplicationDbo>(`
+    UPDATE applications
+    SET status = 'WITHDRAWN'
+    WHERE id = @applicationId
+      AND student_id = @studentId
+      AND status = 'IN_PROGRESS'
+    RETURNING id, offer_id, student_id, message, status, applied_at
+  `);
 
   return {
     findOfferStatus: (offerId: number): OfferStatus | undefined =>
@@ -56,6 +78,10 @@ export const createApplicationsRepository = (db: Db) => {
       insertApplication.get({ offerId, studentId, message }) as ApplicationDbo,
     findForStudent: (studentId: number): StudentApplicationDbo[] =>
       findStudentApplications.all({ studentId }),
+    findById: (applicationId: number): ApplicationDbo | undefined =>
+      findById.get({ applicationId }),
+    withdraw: (applicationId: number, studentId: number): ApplicationDbo | undefined =>
+      withdraw.get({ applicationId, studentId }),
   };
 };
 

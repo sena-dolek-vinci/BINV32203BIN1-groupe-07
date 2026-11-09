@@ -25,6 +25,14 @@ const parseBody = (body: unknown): { offerId: number; message: string | null } =
   return { offerId, message: normalizedMessage === "" ? null : normalizedMessage };
 };
 
+const parseApplicationId = (value: string): number => {
+  const applicationId = Number(value);
+  if (!Number.isInteger(applicationId) || applicationId <= 0) {
+    throw new HttpError(400, "INVALID_PARAMETER", "applicationId doit être un entier positif");
+  }
+  return applicationId;
+};
+
 export const createApplicationsRouter = (applicationsService: ApplicationsService) => {
   const router = Router();
 
@@ -37,6 +45,14 @@ export const createApplicationsRouter = (applicationsService: ApplicationsServic
   router.get("/me", (req, res) => {
     const applications = applicationsService.listMine(getCurrentUser(req));
     res.json(applications.map(toStudentApplicationDto));
+  });
+
+  router.post("/:applicationId/withdraw", (req, res) => {
+    const application = applicationsService.withdraw(
+      getCurrentUser(req),
+      parseApplicationId(req.params.applicationId),
+    );
+    res.json(toApplicationDto(application));
   });
 
   return router;

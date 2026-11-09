@@ -229,3 +229,17 @@ Les candidatures historiques pour une même offre sont retournées séparément.
   et le statut
 - `401` `UNAUTHENTICATED` : session absente ou invalide
 - `403` `FORBIDDEN` : l'utilisateur connecté n'est pas un étudiant
+
+## POST /applications/:applicationId/withdraw
+
+Retire la candidature de l'étudiant connecté sans la supprimer. Seule une candidature
+`IN_PROGRESS` peut être retirée ; elle passe alors à `WITHDRAWN`.
+
+### Réponses
+
+- `200` : candidature mise à jour
+- `400` `INVALID_PARAMETER` : identifiant invalide
+- `401` `UNAUTHENTICATED` : session absente ou invalide
+- `403` `FORBIDDEN` : utilisateur non étudiant ou candidature appartenant à un autre étudiant
+- `404` `NOT_FOUND` : candidature inexistante
+- `409` `APPLICATION_NOT_WITHDRAWABLE` : candidature déjà traitée ou déjà retirée

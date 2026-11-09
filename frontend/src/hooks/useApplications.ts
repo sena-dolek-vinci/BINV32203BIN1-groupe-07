@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { StudentApplication } from "../models/application.ts";
 import { getMyApplications } from "../services/applications.service.ts";
 import { isUnauthorized } from "../utils/api.ts";
@@ -7,6 +7,7 @@ export const useApplications = (token: string, onUnauthorized: () => void) => {
   const [applications, setApplications] = useState<StudentApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,7 +35,9 @@ export const useApplications = (token: string, onUnauthorized: () => void) => {
     load();
 
     return () => controller.abort();
-  }, [token, onUnauthorized]);
+  }, [token, onUnauthorized, reloadKey]);
 
-  return { applications, isLoading, error };
+  const reload = useCallback(() => setReloadKey((key) => key + 1), []);
+
+  return { applications, isLoading, error, reload };
 };

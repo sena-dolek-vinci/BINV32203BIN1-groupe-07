@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ApplicationsPage from "../src/pages/ApplicationsPage.tsx";
 import { stubFetch } from "./helpers/fetchMock.ts";
@@ -89,5 +89,68 @@ describe("ApplicationsPage", () => {
     render(<ApplicationsPage token="jeton" onUnauthorized={onUnauthorized} />);
 
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
+  });
+
+  it("retire une candidature en cours puis actualise la liste", async () => {
+    const fetchMock = stubFetch({
+      "/api/applications/me": () => Response.json([applications[0]]),
+      "/api/applications/1/withdraw": () =>
+        Response.json({ id: 1, offerId: 1, message: "Mon message", status: "WITHDRAWN", appliedAt: "" }),
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<ApplicationsPage token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("En cours");
+
+    fireEvent.click(screen.getByRole("button", { name: "Retirer" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/applications/1/withdraw",
+        expect.objectContaining({ method: "POST", headers: { Authorization: "jeton" } }),
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  it("n'affiche pas de bouton de retrait pour les candidatures traitées ou retirées", async () => {
+    stubFetch({ "/api/applications/me": () => Response.json(applications.slice(1)) });
+
+    render(<ApplicationsPage token="jeton" onUnauthorized={vi.fn()} />);
+
+    await screen.findByText("Retirée");
+    expect(screen.queryByRole("button", { name: "Retirer" })).not.toBeInTheDocument();
+  });
+
+  it("demande confirmation avant de retirer", async () => {
+    stubFetch({ "/api/applications/me": () => Response.json([applications[0]]) });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(<ApplicationsPage token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("En cours");
+    fireEvent.click(screen.getByRole("button", { name: "Retirer" }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(screen.getByText("En cours")).toBeInTheDocument();
+  });
+
+  it("affiche une erreur de retrait", async () => {
+    stubFetch({
+      "/api/applications/me": () => Response.json([applications[0]]),
+      "/api/applications/1/withdraw": () =>
+        new Response(
+          JSON.stringify({ error: { message: "Cette candidature ne peut plus être retirée" } }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
+        ),
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<ApplicationsPage token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("En cours");
+    fireEvent.click(screen.getByRole("button", { name: "Retirer" }));
+
+    expect(
+      await screen.findByText("Cette candidature ne peut plus être retirée"),
+    ).toBeInTheDocument();
   });
 });
