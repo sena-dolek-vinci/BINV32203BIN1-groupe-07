@@ -1,5 +1,5 @@
 import type { Db } from "../db/database.ts";
-import type { ApplicationDbo } from "../models/application.ts";
+import type { ApplicationDbo, StudentApplicationDbo } from "../models/application.ts";
 import type { OfferStatus } from "../models/offer.ts";
 
 interface CreateApplicationParams {
@@ -34,6 +34,18 @@ export const createApplicationsRepository = (db: Db) => {
     VALUES (@offerId, @studentId, @message)
     RETURNING id, offer_id, student_id, message, status, applied_at
   `);
+  const findStudentApplications = db.prepare<{ studentId: number }, StudentApplicationDbo>(`
+    SELECT a.id, a.offer_id, a.student_id, a.message, a.status, a.applied_at,
+           o.title AS offer_title, c.short_name AS company_short_name,
+           ay.label AS academic_year_label, p.code AS period_code
+    FROM applications a
+    JOIN offers o ON o.id = a.offer_id
+    JOIN companies c ON c.id = o.company_id
+    JOIN academic_years ay ON ay.id = o.academic_year_id
+    JOIN periods p ON p.id = o.period_id
+    WHERE a.student_id = @studentId
+    ORDER BY ay.start_date DESC, a.applied_at DESC, a.id DESC
+  `);
 
   return {
     findOfferStatus: (offerId: number): OfferStatus | undefined =>
@@ -42,6 +54,8 @@ export const createApplicationsRepository = (db: Db) => {
       findExisting.all({ offerId, studentId }),
     insert: (offerId: number, studentId: number, message: string | null): ApplicationDbo =>
       insertApplication.get({ offerId, studentId, message }) as ApplicationDbo,
+    findForStudent: (studentId: number): StudentApplicationDbo[] =>
+      findStudentApplications.all({ studentId }),
   };
 };
 

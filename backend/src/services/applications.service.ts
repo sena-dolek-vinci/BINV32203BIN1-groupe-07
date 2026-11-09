@@ -44,6 +44,12 @@ export const createApplicationsService = (repository: ApplicationsRepository) =>
       throw error;
     }
   },
+  listMine: (viewer: User) => {
+    if (!isStudent(viewer)) {
+      throw new HttpError(403, "FORBIDDEN", "Seul un étudiant peut consulter ses candidatures");
+    }
+    return repository.findForStudent(viewer.id);
+  },
 });
 
 export type ApplicationsService = ReturnType<typeof createApplicationsService>;

@@ -217,3 +217,15 @@ Permet à un étudiant connecté de candidater à une offre publiée.
 
 Une candidature `WITHDRAWN` ne bloque pas une nouvelle candidature. Les candidatures
 retirées restent conservées en base.
+
+## GET /applications/me
+
+Retourne les candidatures de l'étudiant connecté, y compris les candidatures retirées.
+Les candidatures historiques pour une même offre sont retournées séparément.
+
+### Réponses
+
+- `200` : tableau de candidatures avec les informations de l'offre, le message, la date
+  et le statut
+- `401` `UNAUTHENTICATED` : session absente ou invalide
+- `403` `FORBIDDEN` : l'utilisateur connecté n'est pas un étudiant

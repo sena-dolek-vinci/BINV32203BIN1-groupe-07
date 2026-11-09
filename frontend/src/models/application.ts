@@ -14,3 +14,10 @@ export interface Application {
   status: ApplicationStatus;
   appliedAt: string;
 }
+
+export interface StudentApplication extends Application {
+  offerTitle: string;
+  companyShortName: string;
+  academicYear: string;
+  period: "P1" | "P2" | "OTHER";
+}

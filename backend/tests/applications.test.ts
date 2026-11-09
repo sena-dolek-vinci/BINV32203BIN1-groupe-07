@@ -16,6 +16,11 @@ const applyAs = (kind: "ADMIN" | "STUDENT" | "CONTACT", id: number, body: object
     .set("Authorization", tokenFor(kind, id))
     .send(body);
 
+const listMineAs = (kind: "ADMIN" | "STUDENT" | "CONTACT", id: number) =>
+  request(app)
+    .get("/applications/me")
+    .set("Authorization", tokenFor(kind, id));
+
 describe("POST /applications", () => {
   it("crée une candidature sans message pour une offre publiée", async () => {
     const response = await applyAs("STUDENT", STUDENT.AMINATA_DIALLO, {
@@ -86,5 +91,62 @@ describe("POST /applications", () => {
     expect(response.status).toBe(201);
     expect(response.body.status).toBe("IN_PROGRESS");
     expect(response.body.id).not.toBe(APPLICATION.INES_BILLING_API);
+  });
+});
+
+describe("GET /applications/me", () => {
+  it("retourne uniquement les candidatures de l'étudiant connecté", async () => {
+    const response = await listMineAs("STUDENT", STUDENT.LUCAS_DUPONT);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveLength(1);
+    expect(response.body[0]).toMatchObject({
+      id: APPLICATION.LUCAS_FLEET_APP,
+      offerId: OFFER.FLEET_APP,
+      offerTitle: "Application React de gestion de flotte",
+      companyShortName: "Lumen Digital",
+      academicYear: "2026-2027",
+      period: "P2",
+      status: "IN_PROGRESS",
+    });
+    expect(response.body[0]).not.toHaveProperty("studentId");
+  });
+
+  it.each([
+    ["ADMIN", ADMINISTRATOR.ANNE_LECLERCQ],
+    ["CONTACT", CONTACT.MARC_LEJEUNE],
+  ] as const)("refuse l'accès à un %s", async (kind, id) => {
+    const response = await listMineAs(kind, id);
+
+    expect(response.status).toBe(403);
+    expect(response.body.error.code).toBe("FORBIDDEN");
+  });
+
+  it("conserve les candidatures retirées et sépare les historiques", async () => {
+    const database = createTestDatabase();
+    database
+      .prepare(
+        `INSERT INTO applications (offer_id, student_id, message, status)
+         VALUES (?, ?, ?, 'WITHDRAWN')`,
+      )
+      .run(OFFER.BILLING_API, STUDENT.LUCAS_DUPONT, "Ancienne candidature");
+    database
+      .prepare(
+        `INSERT INTO applications (offer_id, student_id, message, status)
+         VALUES (?, ?, ?, 'WITHDRAWN')`,
+      )
+      .run(OFFER.BILLING_API, STUDENT.LUCAS_DUPONT, "Deuxième candidature retirée");
+
+    const response = await request(createTestApp(database))
+      .get("/applications/me")
+      .set("Authorization", tokenFor("STUDENT", STUDENT.LUCAS_DUPONT));
+
+    expect(response.status).toBe(200);
+    expect(response.body.filter((application: { offerId: number }) =>
+      application.offerId === OFFER.BILLING_API,
+    )).toHaveLength(2);
+    expect(response.body.map((application: { status: string }) => application.status)).toContain(
+      "WITHDRAWN",
+    );
   });
 });

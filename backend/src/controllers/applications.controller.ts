@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { toApplicationDto } from "../mappers/application.mapper.ts";
+import {
+  toApplicationDto,
+  toStudentApplicationDto,
+} from "../mappers/application.mapper.ts";
 import { getCurrentUser } from "../middlewares/authenticate.ts";
 import type { ApplicationsService } from "../services/applications.service.ts";
 import { HttpError } from "../utils/httpError.ts";
@@ -29,6 +32,11 @@ export const createApplicationsRouter = (applicationsService: ApplicationsServic
     const { offerId, message } = parseBody(req.body);
     const application = applicationsService.apply(getCurrentUser(req), offerId, message);
     res.status(201).json(toApplicationDto(application));
+  });
+
+  router.get("/me", (req, res) => {
+    const applications = applicationsService.listMine(getCurrentUser(req));
+    res.json(applications.map(toStudentApplicationDto));
   });
 
   return router;

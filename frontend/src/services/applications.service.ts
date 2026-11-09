@@ -1,6 +1,6 @@
-import type { Application } from "../models/application.ts";
+import type { Application, StudentApplication } from "../models/application.ts";
 import { API_URL, readJson } from "../utils/api.ts";
-import { isApplication } from "../utils/guards.ts";
+import { isApplication, isStudentApplicationList } from "../utils/guards.ts";
 
 export const createApplication = async (
   token: string,
@@ -13,4 +13,15 @@ export const createApplication = async (
     body: JSON.stringify({ offerId, ...(message.trim() === "" ? {} : { message: message.trim() }) }),
   });
   return readJson(response, isApplication, "Candidature impossible");
+};
+
+export const getMyApplications = async (
+  token: string,
+  signal?: AbortSignal,
+): Promise<StudentApplication[]> => {
+  const response = await fetch(`${API_URL}/applications/me`, {
+    headers: { Authorization: token },
+    signal,
+  });
+  return readJson(response, isStudentApplicationList, "Chargement des candidatures impossible");
 };
