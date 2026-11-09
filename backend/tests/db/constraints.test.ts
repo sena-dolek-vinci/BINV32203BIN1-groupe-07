@@ -169,6 +169,32 @@ const insertInternship = (overrides: Record<string, unknown> = {}) =>
     });
 
 describe("candidatures et stages", () => {
+  it("empêche deux candidatures non retirées pour la même offre et le même étudiant", () => {
+    const insertApplication = (status: string) =>
+      db
+        .prepare(
+          `INSERT INTO applications (offer_id, student_id, message, status)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .run(OFFER.BILLING_API, STUDENT.AMINATA_DIALLO, null, status);
+
+    insertApplication("IN_PROGRESS");
+    expect(() => insertApplication("REJECTED")).toThrow(/UNIQUE/);
+  });
+
+  it("autorise plusieurs candidatures retirées pour la même offre et le même étudiant", () => {
+    const insertApplication = () =>
+      db
+        .prepare(
+          `INSERT INTO applications (offer_id, student_id, message, status)
+           VALUES (?, ?, ?, 'WITHDRAWN')`,
+        )
+        .run(OFFER.BILLING_API, STUDENT.AMINATA_DIALLO, null);
+
+    expect(() => insertApplication()).not.toThrow();
+    expect(() => insertApplication()).not.toThrow();
+  });
+
   it("accepte un stage valide, avec ou sans promoteur", () => {
     expect(() => insertInternship()).not.toThrow();
     expect(() => insertInternship({ promoter_contact_id: null })).not.toThrow();
