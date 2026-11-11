@@ -27,6 +27,15 @@ const withdrawAs = (kind: "ADMIN" | "STUDENT" | "CONTACT", id: number, applicati
     .set("Authorization", tokenFor(kind, id));
 
 describe("POST /applications", () => {
+  it("refuse une candidature sans authentification", async () => {
+    const response = await request(app).post("/applications").send({
+      offerId: OFFER.BILLING_API,
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+  });
+
   it("crée une candidature sans message pour une offre publiée", async () => {
     const response = await applyAs("STUDENT", STUDENT.AMINATA_DIALLO, {
       offerId: OFFER.BILLING_API,
@@ -58,6 +67,15 @@ describe("POST /applications", () => {
 
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe("OFFER_NOT_PUBLISHED");
+  });
+
+  it("refuse une offre inexistante", async () => {
+    const response = await applyAs("STUDENT", STUDENT.AMINATA_DIALLO, {
+      offerId: 999999,
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("NOT_FOUND");
   });
 
   it.each([
@@ -100,6 +118,26 @@ describe("POST /applications", () => {
 });
 
 describe("GET /applications/me", () => {
+  it("refuse la consultation sans authentification", async () => {
+    const response = await request(app).get("/applications/me");
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+  });
+
+  it("n'expose pas les candidatures d'un autre étudiant", async () => {
+    const database = createTestDatabase();
+    const response = await request(createTestApp(database))
+      .get("/applications/me")
+      .set("Authorization", tokenFor("STUDENT", STUDENT.LUCAS_DUPONT));
+
+    const applicationIds = response.body.map((application: { id: number }) => application.id);
+
+    expect(response.status).toBe(200);
+    expect(applicationIds).toContain(APPLICATION.LUCAS_FLEET_APP);
+    expect(applicationIds).not.toContain(APPLICATION.MATEUSZ_CLOUD_MIGRATION);
+  });
+
   it("retourne uniquement les candidatures de l'étudiant connecté", async () => {
     const response = await listMineAs("STUDENT", STUDENT.LUCAS_DUPONT);
 
@@ -158,6 +196,15 @@ describe("GET /applications/me", () => {
 });
 
 describe("POST /applications/:applicationId/withdraw", () => {
+  it("refuse le retrait sans authentification", async () => {
+    const response = await request(app).post(
+      `/applications/${APPLICATION.LUCAS_FLEET_APP}/withdraw`,
+    );
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("UNAUTHENTICATED");
+  });
+
   it("retire une candidature en cours et la conserve dans l'historique", async () => {
     const response = await withdrawAs("STUDENT", STUDENT.LUCAS_DUPONT, APPLICATION.LUCAS_FLEET_APP);
 
