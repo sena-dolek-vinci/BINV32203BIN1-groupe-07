@@ -147,6 +147,9 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
 - Header `Authorization` obligatoire
 - Paramètre facultatif `period` : `P1`, `P2` ou `OTHER`. Une valeur absente signifie
   toutes les périodes.
+- Paramètre facultatif `q` : texte recherché dans le titre des offres, sans tenir compte
+  de la casse. Les espaces au début et à la fin sont supprimés. Une valeur vide est
+  ignorée. Plusieurs mots sont recherchés comme une expression exacte.
 
 ### Réponses
 
@@ -169,7 +172,7 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
 (en attente), `PUBLISHED` (publiée), `ASSIGNED` (attribuée) ou `ARCHIVED` (archivée).
 Le filtre `period` est combiné avec la visibilité du profil : un étudiant ne reçoit que
 les offres `PUBLISHED` de la période choisie et un déposant uniquement ses propres offres
-de cette période.
+de cette période. La recherche `q` est également combinée avec ces filtres.
 
 - `400` `INVALID_QUERY` : `period` est invalide ou apparaît plusieurs fois.
 - `401` `UNAUTHENTICATED` : session absente ou invalide.

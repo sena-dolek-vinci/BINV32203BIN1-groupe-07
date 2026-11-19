@@ -34,6 +34,10 @@ Authorization: {{admin.response.body.token}}
 GET http://localhost:3000/offers
 Authorization: {{student.response.body.token}}
 
+### Recherche d'offres publiées par titre
+GET http://localhost:3000/offers?q=qualité%20des%20données&period=P2
+Authorization: {{student.response.body.token}}
+
 ### Offres vues par le déposant
 GET http://localhost:3000/offers
 Authorization: {{depositor.response.body.token}}
