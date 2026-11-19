@@ -8,13 +8,18 @@ export interface OfferFilter {
   depositorContactId?: number;
   /** Limite aux offres rattachées à cette période. */
   periodCode?: PeriodCode;
+  /** Texte exact cherché dans le titre. */
+  search?: string;
 }
 
 interface FindAllParams {
   status: OfferStatus | null;
   depositorContactId: number | null;
   periodCode: PeriodCode | null;
+  pattern: string | null;
 }
+
+const escapeLike = (text: string): string => text.replace(/[\\%_]/g, (char) => `\\${char}`);
 
 export const createOffersRepository = (db: Db) => {
   const findAll = db.prepare<FindAllParams, OfferDbo>(`
@@ -30,16 +35,18 @@ export const createOffersRepository = (db: Db) => {
     WHERE (@status IS NULL OR o.status = @status)
       AND (@depositorContactId IS NULL OR o.depositor_contact_id = @depositorContactId)
       AND (@periodCode IS NULL OR p.code = @periodCode)
+      AND (@pattern IS NULL OR o.title LIKE @pattern ESCAPE '\\' COLLATE NOCASE)
     ORDER BY ay.start_date DESC, o.created_at DESC
   `);
 
   return {
     /** Offres correspondant au filtre, de la plus récente année à la plus ancienne. */
-    findAll: ({ status, depositorContactId, periodCode }: OfferFilter): OfferDbo[] =>
+    findAll: ({ status, depositorContactId, periodCode, search }: OfferFilter): OfferDbo[] =>
       findAll.all({
         status: status ?? null,
         depositorContactId: depositorContactId ?? null,
         periodCode: periodCode ?? null,
+        pattern: search === undefined ? null : `%${escapeLike(search)}%`,
       }),
   };
 };

@@ -10,10 +10,13 @@ beforeEach(() => {
   app = createTestApp();
 });
 
-const listOffersAs = (kind: UserKind, id: number, period?: string) =>
+const listOffersAs = (kind: UserKind, id: number, period?: string, q?: string) =>
   request(app)
     .get("/offers")
-    .query(period === undefined ? {} : { period })
+    .query({
+      ...(period === undefined ? {} : { period }),
+      ...(q === undefined ? {} : { q }),
+    })
     .set("Authorization", tokenFor(kind, id));
 
 const offerIds = (body: { id: number }[]): number[] => body.map((offer) => offer.id);
@@ -162,5 +165,51 @@ describe("GET /offers : filtre par période", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_QUERY");
+  });
+});
+
+describe("GET /offers : recherche par mot-clé", () => {
+  it("cherche une expression exacte, sans casse, dans le titre d'une offre publiée", async () => {
+    const response = await listOffersAs(
+      "STUDENT",
+      STUDENT.LUCAS_DUPONT,
+      undefined,
+      "  qualité DES données  ",
+    );
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.DATA_QUALITY]);
+  });
+
+  it("combine la recherche avec la période", async () => {
+    const response = await listOffersAs(
+      "ADMIN",
+      ADMINISTRATOR.ANNE_LECLERCQ,
+      "P2",
+      "application React",
+    );
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.FLEET_APP]);
+  });
+
+  it("ignore une recherche vide et retourne une liste vide si aucun titre ne correspond", async () => {
+    const emptySearch = await listOffersAs(
+      "STUDENT",
+      STUDENT.LUCAS_DUPONT,
+      undefined,
+      "   ",
+    );
+    const noMatch = await listOffersAs(
+      "STUDENT",
+      STUDENT.LUCAS_DUPONT,
+      undefined,
+      "python django",
+    );
+
+    expect(emptySearch.status).toBe(200);
+    expect(emptySearch.body).toHaveLength(4);
+    expect(noMatch.status).toBe(200);
+    expect(noMatch.body).toEqual([]);
   });
 });

@@ -60,6 +60,42 @@ describe("OffersPage", () => {
     expect(select).toHaveValue(value);
   });
 
+  it("transmet la recherche et la période à l'API", async () => {
+    const fetchMock = stubFetch({ "/api/offers": () => Response.json(offers) });
+
+    render(<OffersPage user={studentUser} token="jeton" onUnauthorized={vi.fn()} />);
+    await screen.findByText("Refonte du portail client");
+
+    fireEvent.change(screen.getByLabelText("Rechercher par titre"), {
+      target: { value: "  portail client  " },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Filtrer par période" }), {
+      target: { value: "P2" },
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        "/api/offers?q=portail+client&period=P2",
+        expect.objectContaining({
+          headers: { Authorization: "jeton" },
+        }),
+      );
+    });
+  });
+
+  it("adapte le message vide lorsqu'aucune offre ne correspond", async () => {
+    stubFetch({ "/api/offers": () => Response.json([]) });
+
+    render(<OffersPage user={studentUser} token="jeton" onUnauthorized={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText("Rechercher par titre"), {
+      target: { value: "introuvable" },
+    });
+
+    expect(
+      await screen.findByText("Aucune offre ne correspond à la recherche."),
+    ).toBeInTheDocument();
+  });
+
   it("adapte la description au profil", async () => {
     stubFetch({ "/api/offers": () => Response.json([]) });
 

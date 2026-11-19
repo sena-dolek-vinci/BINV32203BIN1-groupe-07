@@ -226,6 +226,13 @@ describe("POST /applications/:applicationId/withdraw", () => {
     expect(response.body.error.code).toBe("FORBIDDEN");
   });
 
+  it("refuse le retrait d'une candidature inexistante", async () => {
+    const response = await withdrawAs("STUDENT", STUDENT.LUCAS_DUPONT, 999999);
+
+    expect(response.status).toBe(404);
+    expect(response.body.error.code).toBe("NOT_FOUND");
+  });
+
   it.each([
     ["SELECTED", APPLICATION.MATEUSZ_CLOUD_MIGRATION, STUDENT.MATEUSZ_KOWALSKI],
     ["REJECTED", APPLICATION.LEA_CLOUD_MIGRATION, STUDENT.LEA_MERTENS],
